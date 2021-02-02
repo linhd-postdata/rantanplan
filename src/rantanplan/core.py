@@ -228,8 +228,8 @@ def get_stresses(phonological_groups):
     # Oxytone (Aguda)
     if last_stress == -1:
         stresses.append(False)
-    # Paroxytone (Esdrújula) or Proparoxytone (Sobreesdrújula)
-    elif last_stress <= -3:
+    # Paroxytone (Esdrújula)
+    elif last_stress == -3:
         if penultimate_word is None:
             stresses.pop()
         elif last_stress > penultimate_word:
@@ -565,14 +565,13 @@ def get_last_syllable(token_list):
                 return token['word'][-1]
 
 
-def get_words(word_list, alternative_syllabification=False, pos_output=False):
+def get_words(word_list, alternative_syllabification=False):
     """Gets a list of syllables from a word and creates a list with syllabified
     word and stressed syllable index
 
     :param word_list: List of spacy objects representing a word or sentence
     :param alternative_syllabification: Whether or not the alternative
         syllabification is used
-    :param pos_output: `True` or `False` for printing the PoS of the words
     :return: List with [original syllab. word, stressed syllab. word, negative
         index position of stressed syllable]
     :rtype: list
@@ -599,12 +598,11 @@ def get_words(word_list, alternative_syllabification=False, pos_output=False):
                 stressed_word.update(
                     {'affixes_length': word._.affixes_length})
                 stressed_word.update({'pos': word.pos_, 'tag': word.tag_})
-            if pos_output:
-                stressed_word.update({'pos': pos})
+            stressed_word.update({'pos': pos})
             syllabified_words.append(stressed_word)
         else:
             syllabified_words.append({"symbol": word.text})
-    syllabified_words = join_affixes(syllabified_words, pos_output)
+    syllabified_words = join_affixes(syllabified_words)
     clean_word_list = [syll for syll in syllabified_words if "word" in syll]
     # Synalepha
     for index, word in enumerate(clean_word_list):
@@ -617,11 +615,10 @@ def get_words(word_list, alternative_syllabification=False, pos_output=False):
     return syllabified_words
 
 
-def join_affixes(line, pos_output=False):
+def join_affixes(line):
     """Join affixes of split words and recalculates stress
 
     :param line: List of syllabified words (dict)
-    :param pos_output: `True` or `False` for printing the PoS of the words
     :return: List of syllabified words (dict) with joined affixes
     :rtype: list
     """
@@ -643,11 +640,44 @@ def join_affixes(line, pos_output=False):
                                           word["tag"])
             word_stress["word"][-1]["is_word_end"] = True
             syllabified_words.append(word_stress)
-            if pos_output:
-                pos_list = [line[index]['pos'] for index in indices_to_ignore]
-                join_pos = "+".join(pos_list)
-                word_stress.update({'pos': join_pos})
+            # Add PoS information
+            pos_list = [line[index]['pos'] for index in indices_to_ignore]
+            join_pos = "+".join(pos_list)
+            word_stress.update({'pos': join_pos})
+    # Handle stress exception for certain paroxytone and proparoxytone words
+    word_list = [token for token in syllabified_words if token.get("word")]
+    last_word = word_list[-1]
+    stresses_list = [syll["is_stressed"] for syll in last_word["word"]]
+    if stresses_list.count(True) >= 1:
+        last_word_stress = stresses_list.index(True) - len(last_word["word"])
+        last_word_is_paroxytone = re.compile(r"VERB\+").match(last_word["pos"])
+        last_word_is_adverb = last_word["pos"] == "ADV"
+        if len(last_word["word"]) >= 3:
+            # If last word is paroxytone and have enclitic pronouns, change the
+            # stress to the last syllable and set the rest to False
+            if last_word_stress == -3 and last_word_is_paroxytone:
+                set_stress_exceptions(last_word)
+                last_word["stress_position"] = -1
+            # If last word is proparoxytone and is not and adverb, change the
+            # stress to the last syllable and set the rest to False
+            elif last_word_stress <= -4 and not last_word_is_adverb:
+                set_stress_exceptions(last_word)
+                last_word["stress_position"] = -1
     return syllabified_words if syllabified_words else line
+
+
+def set_stress_exceptions(word):
+    """Changes stresses of a word to only the last one
+
+    :param word: The word that is going to be changed
+    :return: Word with the new stresses
+    """
+    for idx, stress in enumerate(word["word"]):
+        if idx != len(word["word"]) - 1:
+            stress["is_stressed"] = False
+        else:
+            stress["is_stressed"] = True
+    return word
 
 
 def get_scansion(text, rhyme_analysis=False, rhythm_format="pattern",
@@ -722,13 +752,13 @@ def _get_scansion(text, rhyme_analysis=False, rhythm_format="pattern",
         if (token.pos_ == SPACE
                 and '\n' in token.orth_
                 and len(seen_tokens) > 0):
-            lines.append({"tokens": get_words(seen_tokens, False, pos_output)})
+            lines.append({"tokens": get_words(seen_tokens, False)})
             raw_tokens.append(seen_tokens)
             seen_tokens = []
         else:
             seen_tokens.append(token)
     if len(seen_tokens) > 0:
-        lines.append({"tokens": get_words(seen_tokens, False, pos_output)})
+        lines.append({"tokens": get_words(seen_tokens, False)})
         raw_tokens.append(seen_tokens)
     # Extract phonological groups and rhythm per line
     for line in lines:
@@ -771,8 +801,7 @@ def _get_scansion(text, rhyme_analysis=False, rhythm_format="pattern",
                 structure_length = structure_length * repetitions
         if structure_length:
             if line["rhythm"]["length"] < structure_length[idx]:
-                candidates = generate_phonological_groups(raw_tokens[idx],
-                                                          pos_output)
+                candidates = generate_phonological_groups(raw_tokens[idx])
                 for candidate in candidates:
                     rhythm = get_rhythmical_pattern(
                         candidate, rhythm_format,
@@ -783,7 +812,25 @@ def _get_scansion(text, rhyme_analysis=False, rhythm_format="pattern",
                             "rhythm": rhythm,
                         })
                         break
+    if not pos_output:
+        remove_pos_from_output(lines)
     return remove_exact_length_matches(lines)
+
+
+def remove_pos_from_output(lines):
+    """Remove `pos` tag from the output dictionary
+
+    :param lines: List of dictionary lines of the poem
+    :return: Dictionary with the key removed
+    :rtype: dict
+    """
+    for line in lines:
+        token_list = [token for token in line.get("tokens") if
+                      line.get("tokens")]
+        for token in token_list:
+            if token.get("word"):
+                token.pop("pos")
+    return lines
 
 
 def break_on_h(liaison_type, syllable_left, syllable_right):
@@ -793,16 +840,15 @@ def break_on_h(liaison_type, syllable_left, syllable_right):
     )
 
 
-def generate_phonological_groups(tokens, pos_output=False):
+def generate_phonological_groups(tokens):
     """Generates phonological groups from a list of tokens
 
     :param tokens: list of spaCy tokens
-    :param pos_output: `True` or `False` for printing the PoS of the words
     :return: Generator with a list of phonological groups
     :rtype: generator
     """
     for alternative_syllabification in (True, False):
-        words = get_words(tokens, alternative_syllabification, pos_output)
+        words = get_words(tokens, alternative_syllabification)
         syllables = get_syllables_word_end(words)
         for liaison in (
                 ("synalepha",),

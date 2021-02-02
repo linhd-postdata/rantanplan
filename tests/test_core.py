@@ -26,6 +26,7 @@ from rantanplan.core import has_single_liaisons
 from rantanplan.core import have_prosodic_liaison
 from rantanplan.core import is_paroxytone
 from rantanplan.core import remove_exact_length_matches
+from rantanplan.core import set_stress_exceptions
 from rantanplan.core import spacy_tag_to_dict
 from rantanplan.core import syllabify
 
@@ -398,12 +399,12 @@ def test_get_words():
                 {'syllable': 'fí', 'is_stressed': True},
                 {'syllable': 'si', 'is_stressed': False},
                 {'syllable': 'co', 'is_stressed': False}
-            ], 'stress_position': -3}, {'symbol': '-'}, {
+            ], 'stress_position': -3, 'pos': 'NOUN'}, {'symbol': '-'}, {
             'word': [
                 {'syllable': 'quí', 'is_stressed': True},
                 {'syllable': 'mi', 'is_stressed': False},
                 {'syllable': 'co', 'is_stressed': False}
-            ], 'stress_position': -3}
+            ], 'stress_position': -3, 'pos': 'ADJ'}
     ]
     assert get_words(word) == output
 
@@ -1266,7 +1267,9 @@ def test_get_word_stress_last_word_false():
     output = [
         {'symbol': '¡'},
         {'word': [
-            {'syllable': 'oh', 'is_stressed': False}], 'stress_position': 0},
+            {'syllable': 'oh', 'is_stressed': False}],
+            'stress_position': 0,
+            'pos': 'INTJ'},
         {'symbol': '!'}]
     assert get_words(text) == output
 
@@ -1300,19 +1303,19 @@ def test_get_scansion_pos_output_affixes():
     text = "dímelo"
     output = [{
         'tokens': [
-            {'word': [{'syllable': 'dí', 'is_stressed': True},
+            {'word': [{'syllable': 'dí', 'is_stressed': False},
                       {'syllable': 'me', 'is_stressed': False},
                       {'syllable': 'lo',
-                       'is_stressed': False,
+                       'is_stressed': True,
                        'is_word_end': True}],
-             'stress_position': -3,
+             'stress_position': -1,
              'pos': 'VERB+PRON+PRON'}],
-        'phonological_groups': [{'syllable': 'dí', 'is_stressed': True},
+        'phonological_groups': [{'syllable': 'dí', 'is_stressed': False},
                                 {'syllable': 'me', 'is_stressed': False},
                                 {'syllable': 'lo',
-                                 'is_stressed': False,
+                                 'is_stressed': True,
                                  'is_word_end': True}],
-        'rhythm': {'stress': '+-', 'type': 'pattern', 'length': 2}
+        'rhythm': {'stress': '--+-', 'type': 'pattern', 'length': 4}
     }]
     assert get_scansion(text, pos_output=True) == output
     assert _get_scansion(text, pos_output=True) == output
@@ -1398,3 +1401,49 @@ def test_get_scansion_pos_output_mente(pos_output):
     que rápidamente vivió"""
     assert get_scansion(text, pos_output=True) == pos_output
     assert _get_scansion(text,  pos_output=True) == pos_output
+
+
+def test_set_stress_exceptions_paroxytone_with_clitic():
+    word = {'word': [
+        {'syllable': 'dí', 'is_stressed': True},
+        {'syllable': 'me', 'is_stressed': False},
+        {'syllable': 'lo', 'is_stressed': False, 'is_word_end': True}],
+        'stress_position': -3, 'pos': 'VERB+PRON+PRON'}
+    output = {'word': [
+        {'syllable': 'dí', 'is_stressed': False},
+        {'syllable': 'me', 'is_stressed': False},
+        {'syllable': 'lo', 'is_stressed': True, 'is_word_end': True}],
+        'stress_position': -3, 'pos': 'VERB+PRON+PRON'}
+    assert set_stress_exceptions(word) == output
+
+
+def test_set_stress_exceptions_proparoxytone():
+    word = {'word': [
+        {'syllable': 'có', 'is_stressed': True},
+        {'syllable': 'ge', 'is_stressed': False},
+        {'syllable': 'me', 'is_stressed': False},
+        {'syllable': 'lo', 'is_stressed': False,
+         'is_word_end': True}], 'stress_position': -4,
+        'pos': 'VERB+PRON+PRON'}
+    output = {'word': [
+        {'syllable': 'có', 'is_stressed': False},
+        {'syllable': 'ge', 'is_stressed': False},
+        {'syllable': 'me', 'is_stressed': False},
+        {'syllable': 'lo', 'is_stressed': True, 'is_word_end': True}],
+        'stress_position': -4, 'pos': 'VERB+PRON+PRON'}
+    assert set_stress_exceptions(word) == output
+
+
+def test_set_stress_exceptions_proparoxytone_adverb():
+    word = {'word': [
+        {'syllable': 'rá', 'is_stressed': True},
+        {'syllable': 'pi', 'is_stressed': False},
+        {'syllable': 'da', 'is_stressed': False},
+        {'syllable': 'men', 'is_stressed': True},
+        {'syllable': 'te', 'is_stressed': False,
+         'is_word_end': True}],
+        'stress_position': -5,
+        'secondary_stress_positions': [-2],
+        'pos': 'ADV'}
+    output = word
+    assert set_stress_exceptions(word) == output
