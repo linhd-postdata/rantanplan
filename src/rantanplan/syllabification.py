@@ -60,14 +60,15 @@ STRESSED_UNACCENTED_MONOSYLLABLES = {"yo", "vio", "dio", "fe", "sol", "ti",
 UNSTRESSED_UNACCENTED_MONOSYLLABLES = {'de', 'el', 'la', 'las', 'le', 'les',
                                        'lo', 'los',
                                        'mas', 'me', 'mi', 'nos', 'os', 'que',
-                                       'se', 'si',
-                                       'su', 'tan', 'te', 'tu', "tus", "oh", "pues"}
+                                       'se', 'si', 'na', 'oh',
+                                       'su', 'tan', 'te', 'tu', 'tus', 'pues'}
 
 UNSTRESSED_FORMS = {"ay", "don", "doña", "aun", "que", "cual", "quien", "donde",
-                    "cuando", "cuanto", "como", "cuantas", "cuantos"}
+                    "cuando", "cuanto", "cuanta", "como", "cuantas", "cuantos",
+                    "desque"}
 
 STRESSED_PRON = {"mío", "mía", "míos", "mías", "tuyo", "tuya", "tuyos",
-                 "tuyas", "suyo", "suya", "suyos", "suyas", "todo"}
+                 "tuyas", "suyo", "suya", "suyos", "suyas", "todo", "entrambos"}
 
 POSSESSIVE_PRON_UNSTRESSED = {"nuestro", "nuestra", "nuestros", "nuestras",
                               "vuestro", "vuestra", "vuestros", "vuestras"}
@@ -214,7 +215,8 @@ SYLLABIFICATOR_FOREIGN_WORDS_DICT = {
     "tzompantli": "tzom-pan-tli",
     "whippet": "whip-pet",
     "whiskería": "whis-ke-rí-a",
-    "yihad": "yi-had"}
+    "yihad": "yi-had",
+    "Ylec": "Y-lec"}
 
 """
 Phonetic exceptions dict for potential diaeresis
@@ -711,6 +713,17 @@ ALTERNATIVE_SYLLABIFICATION = {
     'clientes': (['clien', 'tes'], [(['cli', 'en', 'tes'], (0, 1))]),
     'conceptual': (['con', 'cep', 'tual'],
                    [(['con', 'cep', 'tu', 'al'], (2, 3))]),
+    'confiada': (['con', 'fian', 'da'], [(['con', 'fi', 'a', 'da'], (1, 2))]),
+    'confiadas': (
+        ['con', 'fian', 'das'], [(['con', 'fi', 'a', 'das'], (1, 2))]),
+    'confiado': (['con', 'fian', 'do'], [(['con', 'fi', 'a', 'do'], (1, 2))]),
+    'confiados': (
+        ['con', 'fian', 'dos'], [(['con', 'fi', 'a', 'dos'], (1, 2))]),
+    'confiar': (['con', 'fiar'], [(['con', 'fi', 'ar'], (1, 2))]),
+    'confiarse': (['con', 'fiar', 'se'], [(['con', 'fi', 'ar', 'se'], (1, 2))]),
+    'confianza': (['con', 'fian', 'za'], [(['con', 'fi', 'an', 'za'], (1, 2))]),
+    'confianzas': (
+        ['con', 'fian', 'zas'], [(['con', 'fi', 'an', 'zas'], (1, 2))]),
     'congruencia': (['con', 'gruen', 'cia'],
                     [(['con', 'gru', 'en', 'cia'], (1, 2))]),
     'congruencias': (['con', 'gruen', 'cias'],
@@ -727,6 +740,7 @@ ALTERNATIVE_SYLLABIFICATION = {
                     [(['con', 'trac', 'tu', 'al'], (2, 3))]),
     'conventual': (['con', 'ven', 'tual'],
                    [(['con', 'ven', 'tu', 'al'], (2, 3))]),
+    'criad': (['criad'], [(['cri', 'ad'], (0, 1))]),
     'criada': (['cria', 'da'], [(['cri', 'a', 'da'], (0, 1))]),
     'criado': (['cria', 'do'], [(['cri', 'a', 'do'], (0, 1))]),
     'criar': (['criar'], [(['cri', 'ar'], (0, 1))]),
@@ -1232,6 +1246,7 @@ ALTERNATIVE_SYLLABIFICATION = {
     'pianos': (['pia', 'nos'], [(['pi', 'a', 'nos'], (0, 1))]),
     'piara': (['pia', 'ra'], [(['pi', 'a', 'ra'], (0, 1))]),
     'piaras': (['pia', 'ras'], [(['pi', 'a', 'ras'], (0, 1))]),
+    'piedad': (['pie', 'dad'], [(['pi', 'e', 'dad'], (0, 1))]),
     'piojera': (['pio', 'je', 'ra'], [(['pi', 'o', 'je', 'ra'], (0, 1))]),
     'piojeras': (['pio', 'je', 'ras'], [(['pi', 'o', 'je', 'ras'], (0, 1))]),
     'piojillo': (['pio', 'ji', 'llo'], [(['pi', 'o', 'ji', 'llo'], (0, 1))]),
@@ -1332,6 +1347,7 @@ ALTERNATIVE_SYLLABIFICATION = {
     'sexuados': (['se', 'xua', 'dos'], [(['se', 'xu', 'a', 'dos'], (1, 2))]),
     'sexual': (['se', 'xual'], [(['se', 'xu', 'al'], (1, 2))]),
     'suave': (['sua', 've'], [(['su', 'a', 've'], (0, 1))]),
+    'suaves': (['sua', 'ves'], [(['su', 'a', 'ves'], (0, 1))]),
     'suntuoso': (['sun', 'tuo', 'so'], [(['sun', 'tu', 'o', 'so'], (2, 3))]),
     'suntuosa': (['sun', 'tuo', 'sa'], [(['sun', 'tu', 'o', 'sa'], (2, 3))]),
     'suntuosos': (['sun', 'tuo', 'sos'], [(['sun', 'tu', 'o', 'sos'], (2, 3))]),

@@ -9,6 +9,7 @@
 # http://elies.rediris.es/elies4/Fon2.htm
 # http://elies.rediris.es/elies4/Fon8.htm
 import re
+from collections import Counter
 from itertools import product
 
 from spacy.tokens import Doc
@@ -682,7 +683,8 @@ def set_stress_exceptions(word):
 
 def get_scansion(text, rhyme_analysis=False, rhythm_format="pattern",
                  rhythmical_lengths=None, split_stanzas_on=None,
-                 pos_output=False, always_return_rhyme=False):
+                 pos_output=False, always_return_rhyme=False,
+                 rhythmical_lengths_window=8):
     """Generates a list of dictionaries for each line
 
     :param text: Full text to be analyzed
@@ -695,6 +697,8 @@ def get_scansion(text, rhyme_analysis=False, rhythm_format="pattern",
     :param pos_output: `True` or `False` for printing the PoS of the words
     :param always_return_rhyme: `True` or `False` for printing rhyme pattern
         even if no structure is detected
+    :param rhythmical_lengths_window: Size of the window to calculate the most
+        frequent line length when rhythmical_lengths is False. Defaults to 8
     :return: list of dictionaries per line
         (or list of list of dictionaries if split on stanzas)
     :rtype: list
@@ -706,7 +710,8 @@ def get_scansion(text, rhyme_analysis=False, rhythm_format="pattern",
             rhythm_format=rhythm_format,
             rhythmical_lengths=rhythmical_lengths,
             pos_output=pos_output,
-            always_return_rhyme=always_return_rhyme
+            always_return_rhyme=always_return_rhyme,
+            rhythmical_lengths_window=rhythmical_lengths_window,
         )
     else:
         return [
@@ -717,18 +722,20 @@ def get_scansion(text, rhyme_analysis=False, rhythm_format="pattern",
                 rhythmical_lengths=rhythmical_lengths,
                 pos_output=pos_output,
                 always_return_rhyme=always_return_rhyme,
+                rhythmical_lengths_window=rhythmical_lengths_window,
             ) for stanza in re.compile(split_stanzas_on).split(text)
         ]
 
 
 def _get_scansion(text, rhyme_analysis=False, rhythm_format="pattern",
                   rhythmical_lengths=None, split_stanzas_on=None,
-                  pos_output=False, always_return_rhyme=False):
+                  pos_output=False, always_return_rhyme=False,
+                  rhythmical_lengths_window=8):
     """Generates a list of dictionaries for each line
 
     :param text: Full text to be analyzed
     :param rhyme_analysis: Specify if rhyme analysis is to be performed
-    :param rhythm_format: output format for rhythm analysis
+    :param rhythm_format: Output format for rhythm analysis
     :param rhythmical_lengths: List with explicit rhythmical lengths per line
         that the analysed lines has to meet
     :param split_stanzas_on: String or regular expression to split text in
@@ -736,6 +743,8 @@ def _get_scansion(text, rhyme_analysis=False, rhythm_format="pattern",
     :param pos_output: `True` or `False` for printing the PoS of the words
     :param always_return_rhyme: `True` or `False` for printing rhyme pattern
         even if no structure is detected
+    :param rhythmical_lengths_window: Size of the window to calculate the most
+        frequent line length when rhythmical_lengths is False. Defaults to 8
     :return: list of dictionaries per line
     :rtype: list
     """
@@ -788,25 +797,33 @@ def _get_scansion(text, rhyme_analysis=False, rhythm_format="pattern",
                     else:
                         line["rhyme_type"] = rhyme["rhyme_type"]
                         line["rhyme_relaxation"] = rhyme["rhyme_relaxation"]
+    lines_length = len(lines)
+    structure_length = rhythmical_lengths if rhythmical_lengths else None
     for idx, line in enumerate(lines):
-        if rhythmical_lengths is not None:
-            structure_length = rhythmical_lengths
-        else:
+        if not structure_length:
             # Handle repeating stanzas
             line_structure = line.get("structure", None)
             structure_length, repeating_structure = STRUCTURES_LENGTH.get(
                 line_structure, [[], False])
             if structure_length and repeating_structure:
-                repetitions = int(len(lines) / len(structure_length))
+                repetitions = int(lines_length / len(structure_length))
                 structure_length = structure_length * repetitions
         if structure_length:
-            if line["rhythm"]["length"] < structure_length[idx]:
+            structure_length_idx = structure_length[idx]
+        elif lines_length > 1:
+            structure_length_idx = get_structure_from_context(
+                lines, idx, window=rhythmical_lengths_window
+            )
+        else:
+            structure_length_idx = None
+        if structure_length_idx is not None:
+            if line["rhythm"]["length"] < structure_length_idx:
                 candidates = generate_phonological_groups(raw_tokens[idx])
                 for candidate in candidates:
                     rhythm = get_rhythmical_pattern(
                         candidate, rhythm_format,
                         rhyme_analysis=rhyme_analysis)
-                    if rhythm["length"] == structure_length[idx]:
+                    if rhythm["length"] == structure_length_idx:
                         line.update({
                             "phonological_groups": candidate,
                             "rhythm": rhythm,
@@ -815,6 +832,23 @@ def _get_scansion(text, rhyme_analysis=False, rhythm_format="pattern",
     if not pos_output:
         remove_pos_from_output(lines)
     return remove_exact_length_matches(lines)
+
+
+def get_structure_from_context(lines, n, window=3):
+    """Get the most frequent line length around line n using a window
+
+    :param lines: List of dictionary lines of the poem
+    :param n:  Integer with the reference position
+    :param window: Integer with the size of the window around the reference
+                   position. Defaults to 3
+    :return: The most frequent line length
+    """
+    context = (
+        lines[max(n - window, 0):n]
+        + lines[n + 1:min(n + window + 1, len(lines))]
+    )
+    lengths = [line["rhythm"]["length"] for line in context]
+    return Counter(lengths).most_common(1)[0][0]
 
 
 def remove_pos_from_output(lines):

@@ -41,6 +41,7 @@ def load_pipeline(lang=None, split_affixes=True):
         lang = 'es_core_news_md'
     if lang not in _load_pipeline:
         nlp = spacy.load(lang)
+        nlp.remove_pipe("ner") if nlp.has_pipe("ner") else None
         nlp.tokenizer = custom_tokenizer(nlp)
         if split_affixes:
             nlp.remove_pipe("affixes") if nlp.has_pipe("affixes") else None
